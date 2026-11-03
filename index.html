@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ledger — Invoices & Quotes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-page: #f6faf7;
+    --bg-subtle: #f2f7f3;
+    --bg-muted: #e9f1eb;
+    --border: #dfe8e1;
+    --border-strong: #c9d8cd;
+    --text: #14211a;
+    --text-muted: #6b7a70;
+    --text-subtle: #a1afa6;
+    --green: #1f7a4d;
+    --green-hover: #176038;
+    --green-deep: #145c37;
+    --green-soft: #eef7f1;
+    --green-tint: #f3f9f5;
+    --green-line: #c9e4d4;
+    --danger: #b23b3b;
+    --shadow-sm: 0 1px 2px rgba(20,33,26,0.03);
+    --shadow-md: 0 1px 3px rgba(20,33,26,0.03), 0 4px 12px -4px rgba(20,33,26,0.04);
+    --toast-bg: #145c37;
+    --toast-text: #ffffff;
+  }
+
+  body.dark {
+    --bg: #16211b;
+    --bg-page: #0f1813;
+    --bg-subtle: #1a2620;
+    --bg-muted: #223129;
+    --border: #2a3a31;
+    --border-strong: #3a4d42;
+    --text: #eaf1ec;
+    --text-muted: #93a69a;
+    --text-subtle: #6b7e72;
+    --green: #34a86b;
+    --green-hover: #46bd7d;
+    --green-deep: #7dd3a3;
+    --green-soft: #1e3328;
+    --green-tint: #1a2b22;
+    --green-line: #2f4739;
+    --danger: #e57373;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px -4px rgba(0,0,0,0.2);
+    --toast-bg: #34a86b;
+    --toast-text: #0f1813;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg-page); transition: background-color 0.25s; }
+  body {
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px; line-height: 1.5; min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: color 0.25s;
+  }
+  .serif { font-family: 'Fraunces', Georgia, serif; }
+
+  /* Header */
+  .header {
+    border-bottom: 1px solid var(--green-line);
+    background: var(--bg); position: sticky; top: 0; z-index: 20;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .header-inner {
+    max-width: 1180px; margin: 0 auto; padding: 18px 32px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  }
+
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo-mark {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    background: var(--green);
+    position: relative;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background-color 0.25s;
+  }
+  .logo-mark::before,
+  .logo-mark::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 2px;
+  }
+  .logo-mark::before { width: 18px; height: 3px; top: 14px; left: 10px; }
+  .logo-mark::after { width: 3px; height: 14px; top: 14px; left: 10px; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-mark {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 22px; font-weight: 600; letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .brand-mark::after { content: '.'; color: var(--green); }
+  .brand-sub {
+    font-size: 10px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500;
+    margin-top: 3px;
+  }
+
+  .header-actions { display: flex; align-items: center; gap: 12px; }
+  .usage {
+    font-size: 13px; color: var(--green-deep);
+    padding: 8px 14px; border: 1px solid var(--green-line);
+    background: var(--green-tint);
+    border-radius: 100px; display: flex; align-items: center; gap: 8px;
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .usage strong { color: var(--green-deep); font-weight: 600; }
+  .usage-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+  .theme-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer;
+    transition: all 0.2s;
+  }
+  .theme-toggle:hover { border-color: var(--green); color: var(--green); background: var(--green-soft); }
+  .theme-toggle svg { width: 18px; height: 18px; }
+  .theme-toggle .icon-sun { display: none; }
+  body.dark .theme-toggle .icon-sun { display: block; }
+  body.dark .theme-toggle .icon-moon { display: none; }
+
+  /* Main */
+  .main {
+    max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px;
+    display: grid; grid-template-columns: 1fr 400px; gap: 56px;
+  }
+  @media (max-width: 1000px) { .main { grid-template-columns: 1fr; gap: 32px; padding: 32px 24px 60px; } }
+  @media (max-width: 600px) { .header-inner { padding: 16px 20px; } .brand-sub { display: none; } .main { padding: 24px 16px 60px; } }
+
+  .page-head { margin-bottom: 32px; }
+  .page-head h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 40px; font-weight: 500; letter-spacing: -0.02em;
+    line-height: 1.1; margin-bottom: 8px;
+    color: var(--text);
+  }
+  .page-head h1 em { font-style: normal; color: var(--green); }
+  .page-head p { color: var(--text-muted); font-size: 15px; }
+
+  .type-toggle {
+    display: inline-flex; background: var(--bg-muted);
+    border-radius: 8px; padding: 4px; margin-bottom: 24px;
+    border: 1px solid var(--green-line);
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .type-toggle button {
+    background: transparent; border: none; padding: 8px 22px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; color: var(--text-muted);
+    cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .type-toggle button:hover { color: var(--green-deep); }
+  .type-toggle button.active {
+    background: var(--green); color: white;
+    box-shadow: 0 1px 2px rgba(20,33,26,0.15);
+  }
+
+  .section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    padding: 24px 24px 24px 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .section::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--green);
+    transition: background-color 0.25s;
+  }
+  .section-inner { padding-left: 24px; }
+  .section-head {
+    display: flex; align-items: center;
+    margin-bottom: 18px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--bg-muted);
+    transition: border-color 0.25s;
+  }
+  .section-title {
+    font-size: 13px; font-weight: 600;
+    letter-spacing: 0.02em; color: var(--text);
+  }
+
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field-grid.full { grid-template-columns: 1fr; }
+  @media (max-width: 600px) { .field-grid { grid-template-columns: 1fr; } .section { padding: 20px 20px 20px 0; } .section-inner { padding-left: 18px; } }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  .field input, .field textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    font-family: inherit; font-size: 14px; color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.25s, color 0.25s;
+  }
+  .field input:hover, .field textarea:hover { border-color: var(--border-strong); }
+  .field input:focus, .field textarea:focus {
+    border-color: var(--green); box-shadow: 0 0 0 3px rgba(52,168,107,0.15);
+  }
+  .field input::placeholder { color: var(--text-subtle); }
+  .field textarea { resize: vertical; min-height: 72px; }
+
+  .items-wrap {
+    background: var(--green-tint);
+    border: 1px solid var(--green-line);
+    border-radius: 10px;
+    padding: 4px 8px 8px;
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table thead th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--green-deep); padding: 10px 8px;
+    border-bottom: 1px solid var(--green-line);
+    transition: border-color 0.25s;
+  }
+  .items-table thead th.num { text-align: right; }
+  .items-table tbody td {
+    padding: 6px 4px; border-bottom: 1px solid var(--green-line); vertical-align: middle;
+    transition: border-color 0.25s;
+  }
+  .items-table tbody tr:last-child td { border-bottom: none; }
+  .items-table input {
+    width: 100%; background: transparent; border: 1px solid transparent;
+    border-radius: 6px; padding: 8px 8px; font-family: inherit; font-size: 14px;
+    color: var(--text); outline: none; transition: all 0.15s;
+  }
+  .items-table input:hover { background: var(--bg-subtle); }
+  .items-table input:focus {
+    background: var(--bg); border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(52,168,107,0.15);
+  }
+  .col-desc { width: 45%; }
+  .col-qty { width: 12%; }
+  .col-rate { width: 18%; }
+  .col-amt { width: 20%; }
+  .col-x { width: 5%; }
+  .item-amount {
+    text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;
+    color: var(--green-deep);
+    padding-right: 12px !important;
+    transition: color 0.25s;
+  }
+  .item-remove {
+    background: transparent; border: none; color: var(--text-subtle);
+    cursor: pointer; padding: 6px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .item-remove:hover { background: rgba(178,59,59,0.1); color: var(--danger); }
+
+  .add-line {
+    display: flex; align-items: center; gap: 8px;
+    background: transparent; border: none; color: var(--green);
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; padding: 12px 4px 4px;
+  }
+  .add-line:hover { color: var(--green-hover); }
+  .add-line-plus {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid currentColor; font-size: 14px; line-height: 1;
+  }
+
+  .adjust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  .sidebar { position: sticky; top: 88px; align-self: start; }
+  @media (max-width: 1000px) { .sidebar { position: static; } }
+
+  .summary-card {
+    border: 1px solid var(--green-line); border-radius: 12px;
+    background: var(--bg); overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .summary-head {
+    padding: 20px 24px;
+    background: var(--green);
+    display: flex; align-items: center; justify-content: space-between;
+    transition: background-color 0.25s;
+  }
+  .summary-head h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 18px; font-weight: 500; letter-spacing: -0.01em;
+    color: white;
+  }
+  .summary-head .doc-num {
+    font-size: 12px; color: rgba(255,255,255,0.78);
+    font-variant-numeric: tabular-nums;
+  }
+  body.dark .summary-head { background: var(--green-soft); border-bottom: 1px solid var(--green-line); }
+  body.dark .summary-head h2 { color: var(--green-deep); }
+  body.dark .summary-head .doc-num { color: var(--text-muted); }
+
+  .summary-body { padding: 20px 24px; background: var(--green-tint); transition: background-color 0.25s; }
+  .summary-line {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; font-size: 14px; color: var(--text-muted);
+  }
+  .summary-line span:last-child {
+    color: var(--text); font-variant-numeric: tabular-nums; font-weight: 500;
+  }
+  .summary-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 18px 0 4px; margin-top: 8px; border-top: 1px solid var(--green-line);
+    transition: border-color 0.25s;
+  }
+  .summary-total span:first-child {
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--green-deep);
+  }
+  .summary-total span:last-child {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 30px; font-weight: 600; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums; color: var(--green-deep);
+  }
+  .summary-actions { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px 20px; border-radius: 8px; border: none;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn:disabled { opacity: 0.65; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--green); color: white;
+    box-shadow: 0 1px 2px rgba(20,33,26,0.15);
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--green-hover); }
+  .btn-primary:active:not(:disabled) { transform: translateY(1px); }
+  .btn-secondary {
+    background: var(--bg); color: var(--green);
+    border: 1.5px solid var(--green-line);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--green-soft); border-color: var(--green); }
+  .btn svg { width: 16px; height: 16px; }
+
+  .hint {
+    font-size: 12px; color: var(--text-subtle);
+    text-align: center; padding: 4px 8px 0; line-height: 1.5;
+    transition: color 0.15s;
+  }
+
+  .paywall {
+    margin-top: 16px; padding: 20px 24px;
+    border: 1px solid var(--green-line); border-radius: 12px;
+    background: var(--green-soft); text-align: center;
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .paywall-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--green); margin-bottom: 8px;
+  }
+  .paywall h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 18px; font-weight: 500; margin-bottom: 6px; letter-spacing: -0.01em;
+  }
+  .paywall p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5; }
+  .paywall button {
+    background: var(--green); color: white; border: none;
+    padding: 10px 20px; border-radius: 8px; font-family: inherit;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  .paywall button:hover { background: var(--green-hover); }
+  body.dark .paywall button { color: #0f1813; }
+
+  .preview-wrap { margin-top: 28px; }
+  .preview-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--text-muted);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .preview-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .preview {
+    background: #ffffff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 32px 28px; color: #14211a;
+    box-shadow: var(--shadow-md);
+    font-size: 12px;
+  }
+  .preview-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding-bottom: 20px; border-bottom: 2px solid var(--green); margin-bottom: 20px;
+  }
+  .preview-doc-type {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 20px; font-weight: 600; letter-spacing: -0.01em;
+    margin-bottom: 2px; color: var(--green);
+  }
+  .preview-doc-num { font-size: 11px; color: #6b7a70; }
+  .preview-biz {
+    text-align: right; font-size: 11px; color: #6b7a70; line-height: 1.6;
+  }
+  .preview-biz strong {
+    display: block; color: #14211a; font-weight: 600;
+    font-size: 12px; margin-bottom: 2px;
+  }
+  .preview-meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;
+  }
+  .preview-meta > div > div:first-child {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.1em; color: #6b7a70; margin-bottom: 6px;
+  }
+  .preview-meta > div > div:last-child { color: #14211a; font-size: 12px; line-height: 1.5; }
+  .preview-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  .preview-table th {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #6b7a70;
+    padding: 8px 4px; border-bottom: 1px solid #dfe8e1; text-align: left;
+  }
+  .preview-table th.num { text-align: right; }
+  .preview-table td {
+    padding: 8px 4px; border-bottom: 1px solid #e9f1eb; font-size: 12px;
+  }
+  .preview-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .preview-totals {
+    display: flex; flex-direction: column; gap: 4px;
+    align-items: flex-end; padding-top: 8px;
+  }
+  .preview-total-line {
+    display: flex; gap: 24px; font-size: 11px; color: #6b7a70;
+    min-width: 200px; justify-content: space-between;
+  }
+  .preview-total-line span:last-child { color: #14211a; font-variant-numeric: tabular-nums; }
+  .preview-grand {
+    display: flex; gap: 24px; justify-content: space-between;
+    padding-top: 12px; margin-top: 8px; border-top: 2px solid var(--green);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 18px; font-weight: 600; min-width: 200px;
+    font-variant-numeric: tabular-nums; color: var(--green);
+  }
+  .preview-empty { color: #a1afa6; font-style: italic; font-size: 11px; }
+
+  .toast {
+    position: fixed; bottom: 32px; left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    background: var(--toast-bg); color: var(--toast-text);
+    padding: 12px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    opacity: 0; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.error { background: var(--danger); color: white; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="logo-mark" aria-hidden="true"></div>
+      <div class="brand-text">
+        <div class="brand-mark serif">Ledger</div>
+        <div class="brand-sub">Invoices &amp; Quotes</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="usage">
+        <span class="usage-dot"></span>
+        <span><strong id="usage-count">0</strong> of 3 free this month</span>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <section>
+    <div class="page-head">
+      <h1 class="serif" id="page-title">New <em>invoice</em></h1>
+      <p>Fill in the details below. Your PDF and M-Pesa request will be ready in seconds.</p>
+    </div>
+
+    <div class="type-toggle">
+      <button class="active" data-type="invoice">Invoice</button>
+      <button data-type="quote">Quote</button>
+    </div>
+
+    <!-- BUSINESS -->
+    <div class="section">
+      <div class="section-inner">
+        <div class="section-head">
+          <div class="section-title">Your business</div>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="biz-name">Business name</label>
+            <input id="biz-name" placeholder="Acme Studio" value="Sparkle Cleaning Co." />
+          </div>
+          <div class="field">
+            <label for="biz-email">Email</label>
+            <input id="biz-email" type="email" placeholder="hello@biz.com" value="hello@sparklecleaning.com" />
+          </div>
+          <div class="field-grid full" style="grid-column: 1 / -1;">
+            <div class="field">
+              <label for="biz-address">Address</label>
+              <input id="biz-address" placeholder="123 Main St, City" value="123 Main St, Austin, TX 78701" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENT -->
+    <div class="section">
+      <div class="section-inner">
+        <div class="section-head">
+          <div class="section-title">Your client</div>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="client-name">Client name</label>
+            <input id="client-name" placeholder="Jane Smith" />
+          </div>
+          <div class="field">
+            <label for="client-email">Client email</label>
+            <input id="client-email" type="email" placeholder="jane@email.com" />
+          </div>
+          <div class="field">
+            <label for="inv-number">Document number</label>
+            <input id="inv-number" value="INV-1042" />
+          </div>
+          <div class="field">
+            <label for="due-date">Due date</label>
+            <input id="due-date" type="date" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ITEMS -->
+    <div class="section">
+      <div class="section-inner">
+        <div class="section-head">
+          <div class="section-title">Line items</div>
+        </div>
+        <div class="items-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th class="col-desc">Description</th>
+                <th class="col-qty num">Qty</th>
+                <th class="col-rate num">Rate</th>
+                <th class="col-amt num" style="text-align:right; padding-right:12px;">Amount</th>
+                <th class="col-x"></th>
+              </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+          </table>
+        </div>
+        <button class="add-line" id="add-item">
+          <span class="add-line-plus">+</span>
+          <span>Add line item</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ADJUSTMENTS -->
+    <div class="section">
+      <div class="section-inner">
+        <div class="section-head">
+          <div class="section-title">Adjustments &amp; notes</div>
+        </div>
+        <div class="adjust-grid">
+          <div class="field">
+            <label for="tax-rate">Tax rate (%)</label>
+            <input id="tax-rate" type="number" value="0" min="0" step="0.1" />
+          </div>
+          <div class="field">
+            <label for="discount-rate">Discount (%)</label>
+            <input id="discount-rate" type="number" value="0" min="0" max="100" step="0.1" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="notes">Notes / payment terms</label>
+          <textarea id="notes" placeholder="Payment due within 14 days.">Payment due within 14 days. Thank you for your business.</textarea>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="summary-card">
+      <div class="summary-head">
+        <h2 class="serif">Summary</h2>
+        <div class="doc-num" id="summary-num">INV-1042</div>
+      </div>
+      <div class="summary-body">
+        <div class="summary-line"><span>Subtotal</span><span id="sum-subtotal">$0.00</span></div>
+        <div class="summary-line"><span>Discount</span><span id="sum-discount">—</span></div>
+        <div class="summary-line"><span>Tax</span><span id="sum-tax">—</span></div>
+        <div class="summary-total">
+          <span>Total</span>
+          <span id="sum-total">$0.00</span>
+        </div>
+      </div>
+      <div class="summary-actions">
+        <button class="btn btn-primary" id="btn-generate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6M12 18v-6M9 15h6"/>
+          </svg>
+          Download PDF
+        </button>
+
+        <div class="field" style="margin-top: 8px;">
+          <label for="client-phone">Client M-Pesa number</label>
+          <input id="client-phone" type="tel" placeholder="0712 345 678" />
+        </div>
+
+        <button class="btn btn-primary" id="btn-mpesa">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2"/>
+            <path d="M12 18h.01"/>
+          </svg>
+          Request M-Pesa payment
+        </button>
+        <div class="hint" id="mpesa-hint">Client will receive a PIN prompt on their phone.</div>
+      </div>
+    </div>
+
+    <div class="paywall hidden" id="paywall">
+      <div class="paywall-label">Free plan limit</div>
+      <h3 class="serif">You've used all 3 invoices</h3>
+      <p>Upgrade to Ledger Pro for unlimited documents, custom branding, and payment tracking.</p>
+      <button onclick="alert('Upgrade flow coming soon')">Upgrade — $12/month</button>
+    </div>
+
+    <div class="preview-wrap">
+      <div class="preview-label">Preview</div>
+      <div class="preview" id="preview"></div>
+    </div>
+  </aside>
+</main>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+const state = {
+  type: 'invoice',
+  items: [{ desc: 'Deep clean — 3 bedroom home', qty: 1, rate: 180 }],
+  invoiceCount: parseInt(localStorage.getItem('inv_count') || '0'),
+  isPro: localStorage.getItem('inv_pro') === 'true',
+  theme: localStorage.getItem('theme') || 'light',
+};
+const FREE_LIMIT = 3;
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + n.toFixed(2);
+const GREEN = [31, 122, 77];
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- Theme ---------- */
+function applyTheme(t) {
+  document.body.classList.toggle('dark', t === 'dark');
+  state.theme = t;
+  localStorage.setItem('theme', t);
+}
+$('theme-toggle').addEventListener('click', () => {
+  applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+});
+applyTheme(state.theme);
+
+/* ---------- Line items ---------- */
+function renderItems() {
+  const body = $('items-body');
+  body.innerHTML = '';
+  state.items.forEach((item, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input data-i="${i}" data-field="desc" value="${escapeHtml(item.desc)}" placeholder="Service or product" /></td>
+      <td><input data-i="${i}" data-field="qty" type="number" value="${item.qty}" min="0" step="0.5" style="text-align:right" /></td>
+      <td><input data-i="${i}" data-field="rate" type="number" value="${item.rate}" min="0" step="0.01" style="text-align:right" /></td>
+      <td class="item-amount">${fmt(item.qty * item.rate)}</td>
+      <td>
+        <button class="item-remove" data-remove="${i}" title="Remove">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </td>
+    `;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = +e.target.dataset.i, field = e.target.dataset.field;
+      state.items[i][field] = field === 'desc' ? e.target.value : (parseFloat(e.target.value) || 0);
+      updateTotals(); renderPreview();
+    });
+  });
+  body.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (state.items.length === 1) return toast('At least one line item is required', true);
+      state.items.splice(+btn.dataset.remove, 1);
+      renderItems(); updateTotals(); renderPreview();
+    });
+  });
+}
+
+function calcTotals() {
+  const subtotal = state.items.reduce((s, it) => s + it.qty * it.rate, 0);
+  const discountPct = parseFloat($('discount-rate').value) || 0;
+  const taxPct = parseFloat($('tax-rate').value) || 0;
+  const discount = subtotal * (discountPct / 100);
+  const taxable = subtotal - discount;
+  const tax = taxable * (taxPct / 100);
+  return { subtotal, discount, tax, total: taxable + tax };
+}
+
+function updateTotals() {
+  const t = calcTotals();
+  $('sum-subtotal').textContent = fmt(t.subtotal);
+  $('sum-discount').textContent = t.discount > 0 ? '−' + fmt(t.discount) : '—';
+  $('sum-tax').textContent = t.tax > 0 ? fmt(t.tax) : '—';
+  $('sum-total').textContent = fmt(t.total);
+  $('summary-num').textContent = $('inv-number').value || '—';
+}
+
+function renderPreview() {
+  const t = calcTotals();
+  const isQuote = state.type === 'quote';
+  const bizName = $('biz-name').value || 'Your business';
+  const bizEmail = $('biz-email').value || '';
+  const bizAddr = $('biz-address').value || '';
+  const clientName = $('client-name').value || 'Client';
+  const clientEmail = $('client-email').value || '';
+  const due = $('due-date').value;
+
+  const itemsHtml = state.items.map(it => `
+    <tr>
+      <td>${escapeHtml(it.desc) || '<span class="preview-empty">No description</span>'}</td>
+      <td class="num">${it.qty}</td>
+      <td class="num">${fmt(it.rate)}</td>
+      <td class="num">${fmt(it.qty * it.rate)}</td>
+    </tr>
+  `).join('');
+
+  $('preview').innerHTML = `
+    <div class="preview-head">
+      <div>
+        <div class="preview-doc-type">${isQuote ? 'Quote' : 'Invoice'}</div>
+        <div class="preview-doc-num">${escapeHtml($('inv-number').value) || '—'}</div>
+      </div>
+      <div class="preview-biz">
+        <strong>${escapeHtml(bizName)}</strong>
+        ${escapeHtml(bizEmail)}<br/>
+        ${escapeHtml(bizAddr)}
+      </div>
+    </div>
+    <div class="preview-meta">
+      <div>
+        <div>Billed to</div>
+        <div>${escapeHtml(clientName)}<br/>${escapeHtml(clientEmail)}</div>
+      </div>
+      <div>
+        <div>${due ? 'Due date' : 'Issued'}</div>
+        <div>${due || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+      </div>
+    </div>
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="num">Qty</th>
+          <th class="num">Rate</th>
+          <th class="num">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+    <div class="preview-totals">
+      <div class="preview-total-line"><span>Subtotal</span><span>${fmt(t.subtotal)}</span></div>
+      ${t.discount > 0 ? `<div class="preview-total-line"><span>Discount</span><span>−${fmt(t.discount)}</span></div>` : ''}
+      ${t.tax > 0 ? `<div class="preview-total-line"><span>Tax</span><span>${fmt(t.tax)}</span></div>` : ''}
+      <div class="preview-grand"><span>Total</span><span>${fmt(t.total)}</span></div>
+    </div>
+  `;
+}
+
+/* ---------- PDF ---------- */
+async function generatePDF() {
+  if (!canUse()) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const t = calcTotals();
+  const isQuote = state.type === 'quote';
+  const biz = $('biz-name').value || 'Your Business';
+  const bizEmail = $('biz-email').value;
+  const bizAddr = $('biz-address').value;
+  const client = $('client-name').value || 'Client';
+  const clientEmail = $('client-email').value;
+  const invNum = $('inv-number').value;
+  const due = $('due-date').value;
+  const notes = $('notes').value;
+
+  doc.setFillColor(...GREEN);
+  doc.rect(0, 0, 210, 8, 'F');
+  doc.setDrawColor(...GREEN);
+  doc.setLineWidth(1);
+  doc.line(14, 30, 196, 30);
+  doc.setTextColor(...GREEN);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(24);
+  doc.text(isQuote ? 'Quote' : 'Invoice', 14, 22);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(107, 122, 112);
+  doc.text(invNum || '', 196, 22, { align: 'right' });
+
+  let y = 44;
+  doc.setTextColor(107, 122, 112);
+  doc.setFontSize(8);
+  doc.text('FROM', 14, y);
+  doc.text('BILLED TO', 110, y);
+  doc.setTextColor(20, 33, 26);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(biz, 14, y + 8);
+  doc.text(client, 110, y + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(107, 122, 112);
+  doc.text(bizEmail || '', 14, y + 15);
+  doc.text(bizAddr || '', 14, y + 21);
+  doc.text(clientEmail || '', 110, y + 15);
+  if (due) doc.text('Due: ' + due, 110, y + 21);
+
+  y = 85;
+  doc.setDrawColor(201, 228, 212);
+  doc.setFillColor(243, 249, 245);
+  doc.rect(14, y - 4, 182, 14, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(...GREEN);
+  doc.text('DESCRIPTION', 16, y + 4);
+  doc.text('QTY', 130, y + 4, { align: 'right' });
+  doc.text('RATE', 158, y + 4, { align: 'right' });
+  doc.text('AMOUNT', 194, y + 4, { align: 'right' });
+
+  y += 20;
+  doc.setFontSize(10);
+  doc.setTextColor(20, 33, 26);
+  state.items.forEach(it => {
+    const desc = (it.desc || '—').substring(0, 60);
+    doc.text(desc, 14, y);
+    doc.text(String(it.qty), 130, y, { align: 'right' });
+    doc.text(fmt(it.rate), 158, y, { align: 'right' });
+    doc.text(fmt(it.qty * it.rate), 196, y, { align: 'right' });
+    doc.setDrawColor(233, 241, 235);
+    doc.line(14, y + 3, 196, y + 3);
+    y += 8;
+    if (y > 260) { doc.addPage(); y = 20; }
+  });
+
+  y += 6;
+  doc.setDrawColor(201, 228, 212);
+  doc.line(110, y, 196, y);
+  y += 8;
+  doc.setFontSize(9);
+  doc.setTextColor(107, 122, 112);
+  doc.text('Subtotal', 110, y);
+  doc.text(fmt(t.subtotal), 196, y, { align: 'right' });
+  if (t.discount > 0) { y += 6; doc.text('Discount', 110, y); doc.text('−' + fmt(t.discount), 196, y, { align: 'right' }); }
+  if (t.tax > 0) { y += 6; doc.text('Tax', 110, y); doc.text(fmt(t.tax), 196, y, { align: 'right' }); }
+
+  y += 8;
+  doc.setFillColor(...GREEN);
+  doc.rect(110, y, 86, 16, 'F');
+  y += 11;
+  doc.setFont('times', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Total', 114, y);
+  doc.text(fmt(t.total), 192, y, { align: 'right' });
+
+  if (notes) {
+    y += 24;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(107, 122, 112);
+    const lines = doc.splitTextToSize(notes, 180);
+    doc.text(lines, 14, y);
+  }
+
+  doc.setFontSize(8);
+  doc.setTextColor(161, 175, 166);
+  doc.text('Generated with Ledger', 105, 290, { align: 'center' });
+
+  doc.save(`${invNum || (isQuote ? 'quote' : 'invoice')}.pdf`);
+  recordUsage('pdf');
+  toast('PDF downloaded');
+}
+
+/* ---------- M-Pesa ---------- */
+async function requestMpesa() {
+  if (!canUse()) return;
+
+  const t = calcTotals();
+  if (t.total <= 0) return toast('Add line items first', true);
+
+  const phone = $('client-phone').value.trim();
+  if (!phone) return toast("Enter the client's M-Pesa number", true);
+
+  const btn = $('btn-mpesa');
+  const hint = $('mpesa-hint');
+  const original = btn.innerHTML;
+
+  btn.disabled = true;
+  btn.innerHTML = 'Sending request…';
+  hint.textContent = 'Contacting M-Pesa…';
+  hint.style.color = '';
+
+  try {
+    const res = await fetch('/api/mpesa-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone,
+        amount: t.total,
+        invoiceNumber: $('inv-number').value,
+        clientName: $('client-name').value,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+
+    toast('PIN prompt sent — check the phone');
+    hint.textContent = 'Waiting for the client to enter their PIN…';
+    recordUsage('mpesa');
+    pollMpesaStatus(data.checkoutId);
+  } catch (err) {
+    toast(err.message, true);
+    hint.textContent = 'Could not send the request';
+    hint.style.color = 'var(--danger)';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
+async function pollMpesaStatus(checkoutId) {
+  const hint = $('mpesa-hint');
+  for (let i = 0; i < 20; i++) {           // ~2 minutes
+    await new Promise(r => setTimeout(r, 6000));
+    try {
+      const res = await fetch(`/api/mpesa-status?id=${encodeURIComponent(checkoutId)}`);
+      if (!res.ok) continue;
+      const { status, receipt } = await res.json();
+
+      if (status === 'paid') {
+        hint.textContent = `✓ Paid — receipt ${receipt || 'confirmed'}`;
+        hint.style.color = 'var(--green)';
+        return;
+      }
+      if (status === 'failed') {
+        hint.textContent = '✗ Payment cancelled or failed';
+        hint.style.color = 'var(--danger)';
+        return;
+      }
+    } catch { /* keep polling */ }
+  }
+  hint.textContent = 'Still waiting… check the M-Pesa statement';
+}
+
+/* ---------- Usage ---------- */
+function canUse() {
+  if (state.isPro) return true;
+  if (state.invoiceCount >= FREE_LIMIT) {
+    $('paywall').classList.remove('hidden');
+    toast('Free plan limit reached — upgrade to continue', true);
+    return false;
+  }
+  return true;
+}
+
+function recordUsage(kind) {
+  if (state.isPro) return;
+  state.invoiceCount++;
+  localStorage.setItem('inv_count', state.invoiceCount);
+  $('usage-count').textContent = state.invoiceCount;
+  if (state.invoiceCount >= FREE_LIMIT) {
+    $('paywall').classList.remove('hidden');
+  }
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg, isError = false) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = 'toast', 2600);
+}
+
+/* ---------- Init ---------- */
+function init() {
+  const d = new Date(); d.setDate(d.getDate() + 14);
+  $('due-date').value = d.toISOString().split('T')[0];
+
+  $('usage-count').textContent = state.invoiceCount;
+  if (state.invoiceCount >= FREE_LIMIT && !state.isPro) {
+    $('paywall').classList.remove('hidden');
+  }
+
+  renderItems();
+  updateTotals();
+  renderPreview();
+
+  ['tax-rate', 'discount-rate', 'biz-name', 'biz-email', 'biz-address',
+   'client-name', 'client-email', 'inv-number', 'due-date', 'notes']
+    .forEach(id => $(id).addEventListener('input', () => { updateTotals(); renderPreview(); }));
+
+  $('add-item').addEventListener('click', () => {
+    state.items.push({ desc: '', qty: 1, rate: 0 });
+    renderItems(); updateTotals(); renderPreview();
+  });
+
+  $('btn-generate').addEventListener('click', generatePDF);
+  $('btn-mpesa').addEventListener('click', requestMpesa);
+
+  document.querySelectorAll('.type-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.type-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.type = btn.dataset.type;
+      const prefix = state.type === 'quote' ? 'QT' : 'INV';
+      $('inv-number').value = prefix + '-' + Math.floor(Math.random() * 9000 + 1000);
+      $('page-title').innerHTML = state.type === 'quote' ? 'New <em>quote</em>' : 'New <em>invoice</em>';
+      updateTotals(); renderPreview();
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); generatePDF(); }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
